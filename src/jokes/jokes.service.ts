@@ -1,63 +1,116 @@
-import { Injectable } from '@nestjs/common';
-import { Joke, JokeType, JokeWithType } from './jokes.model';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
 import { CreateJokeDto } from './dto/create-joke.dto';
+import { CreateJokeTypeDto } from './dto/create-joke-type.dto';
+import { JokeWithType } from './jokes.model';
 
 @Injectable()
-export class JokesService {
+export class JokesService implements OnModuleDestroy {
+  private prisma = new PrismaClient();
 
-  // In-memory database of jokes
-  private jokes: Joke[] = [
-    { id: 1, typeId: 1, content: 'Why did the chicken cross the road? To get to the other side!' },
-    { id: 2, typeId: 2, content: 'Why do programmers prefer dark mode? Because light attracts bugs!' },
-    { id: 3, typeId: 1, content: 'I told my wife she was drawing her eyebrows too high. She looked surprised.' },
-  ];
-
-  // In-memory database of joke types
-  private jokeTypes: JokeType[] = [
-    { id: 1, name: 'general' },
-    { id: 2, name: 'programming' },
-    { id: 3, name: 'dad jokes' },
-    { id: 4, name: 'lovejokes' },
-  ];
-
-  getJokes(typeId?: number): JokeWithType[] {
-
-    const typeIdNumber = typeId ? Number(typeId) : undefined;
-    const filteredJokes = typeIdNumber ? this.jokes.filter(joke => joke.typeId === typeIdNumber) : this.jokes;
-
-    return filteredJokes.map(joke => {
-      const type = this.jokeTypes.find(t => t.id === joke.typeId);
-      return {
-        ...joke,
-        typeName: type.name
-      };
+  async getJokes(typeId?: number): Promise<JokeWithType[]> {
+    const jokes = await this.prisma.joke.findMany({
+      where: {
+        typeId: typeId
+      },
+      include: {
+        type: true
+      }
     });
+  
+    
+    return jokes.map(joke => ({
+      ...joke,
+      typeName: joke.type.name
+    }));
   }
+  
 
-  getRandomJoke(typeId?: number): JokeWithType {
-    const jokes = this.getJokes(typeId);
-
-    // Pick a random joke from the filtered jokes
-    const randomJoke = jokes[Math.floor(Math.random() * jokes.length)];
-    return randomJoke;
-  }
-
-  getJokeTypes(): JokeType[] {
-    return this.jokeTypes;
-  }
-
-  addNewJoke(createJokeDto: CreateJokeDto): Joke {
-    const isValidType = this.jokeTypes.some(jokeType => jokeType.id === createJokeDto.typeId);
-    if (!isValidType) {
-      throw new Error('Invalid joke type');
+  async getRandomJoke(typeId?: number): Promise<JokeWithType> {
+    const jokeCount = await this.prisma.joke.count({
+      where: {
+        typeId: typeId
+      }
+    });
+  
+    if (jokeCount === 0) {
+      throw new Error('No jokes found for this type');
     }
-
-    const newJoke: Joke = {
-      id: this.jokes.length + 1,
-      content: createJokeDto.content,
-      typeId: createJokeDto.typeId,
+  
+    const randomSkip = Math.floor(Math.random() * jokeCount);
+    const joke = await this.prisma.joke.findFirst({
+      where: {
+        typeId: typeId
+      },
+      skip: randomSkip,
+      take: 1,
+      include: {
+        type: true
+      }
+    });
+  
+    if (!joke) {
+      throw new Error('No joke found');
+    }
+  
+    return {
+      ...joke,
+      typeName: joke.type.name
     };
-    this.jokes.push(newJoke);
+  }  
+
+  
+
+  async getJokeTypes() {
+    return await this.prisma.jokeType.findMany();
+  }
+
+  async addNewJoke(createJokeDto: CreateJokeDto) {
+    // Check if the joke type exists
+    const isValidType = await this.prisma.jokeType.findUnique({
+      where: { id: createJokeDto.typeId },
+    });
+    if (!isValidType) throw new Error('Invalid joke type');
+
+    const existingJoke = await this.prisma.joke.findFirst({
+      where: {
+        content: createJokeDto.content,
+        typeId: createJokeDto.typeId,
+      },
+    });
+    if (existingJoke) throw new Error('Joke with the same content and type already exists');
+  
+    const newJoke = await this.prisma.joke.create({
+      data: {
+        content: createJokeDto.content,
+        typeId: createJokeDto.typeId,
+      },
+    });
     return newJoke;
+  }
+  
+
+
+async addNewJokeType(createJokeTypeDto: CreateJokeTypeDto) {
+ 
+  const existingType = await this.prisma.jokeType.findFirst({
+    where: { name: createJokeTypeDto.name },
+  });
+
+  if (existingType) throw new Error('Joke type already exists');
+
+  const newJokeType = await this.prisma.jokeType.create({
+    data: {
+      name: createJokeTypeDto.name,
+    },
+  });
+
+  return newJokeType;
+}
+
+
+  // This method will be called when the app shuts down
+  async onModuleDestroy() {
+    await this.prisma.$disconnect();
   }
 }

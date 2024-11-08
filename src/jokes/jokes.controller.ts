@@ -3,6 +3,7 @@ import { JokesService } from './jokes.service';
 import { CreateJokeDto } from './dto/create-joke.dto';
 import { JokeWithType } from './jokes.model';
 import { JwtAuthGuard } from 'src/guards/jwt-auth.guard';
+import { CreateJokeTypeDto } from './dto/create-joke-type.dto';
 
 @Controller('jokes')
 export class JokesController {
@@ -10,26 +11,25 @@ export class JokesController {
   constructor(private readonly jokesService: JokesService) { }
 
   @Get('allDeliverJokes')
-  getJokes(@Query('typeId') typeId?: number): JokeWithType[] {
-    return this.jokesService.getJokes(typeId);
+  async getJokes(@Query('typeId') typeId?: number): Promise<JokeWithType[]> {
+    return await this.jokesService.getJokes(typeId);
   }
 
   @Get('random')
-  getRandomJoke(@Query('typeId') typeId?: number): JokeWithType {
-    return this.jokesService.getRandomJoke(typeId);
+  async getRandomJoke(@Query('typeId') typeId?: number): Promise<JokeWithType> {
+    return await this.jokesService.getRandomJoke(Number(typeId));
   }
 
   @Get('types')
-  getJokeTypes() {
-    return this.jokesService.getJokeTypes();
+  async getJokeTypes() {
+    return await this.jokesService.getJokeTypes();
   }
-
 
   @Post('newJoke')
   @UseGuards(JwtAuthGuard) // Add the JwtAuthGuard here
-  addNewJoke(@Body() createJokeDto: CreateJokeDto) {
+  async addNewJoke(@Body() createJokeDto: CreateJokeDto) {
     try {
-      return this.jokesService.addNewJoke(createJokeDto);
+      return await this.jokesService.addNewJoke(createJokeDto);
     } catch (error) {
       if (error.message) {
         throw new HttpException(
@@ -42,4 +42,18 @@ export class JokesController {
       );
     }
   }
+  
+  @Post('newJokeType')
+  @UseGuards(JwtAuthGuard) // Add the JwtAuthGuard here
+  async addNewJokeType(@Body() createJokeTypeDto: CreateJokeTypeDto) {
+    try {
+      return await this.jokesService.addNewJokeType(createJokeTypeDto);
+    } catch (error) {
+      throw new HttpException(
+        error.message || 'Internal Server Error',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
 }
