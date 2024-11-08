@@ -1,0 +1,21 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Joke {
+  id      Int    @id @default(autoincrement())
+  content String
+  typeId  Int
+  type    JokeType @relation(fields: [typeId], references: [id])
+}
+
+model JokeType {
+  id    Int    @id @default(autoincrement())
+  name  String
+  jokes Joke[]
+}
