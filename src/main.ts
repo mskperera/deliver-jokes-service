@@ -1,19 +1,24 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import * as dotenv from 'dotenv';
-dotenv.config(); // Load environment variables from .env file
+
+dotenv.config();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-    
-  // Enable CORS with custom options
-    app.enableCors({
-      origin: ['http://localhost:3000', 'http://another-allowed-origin.com'],
-      methods: 'GET, POST, PUT, DELETE',  // Allowed HTTP methods
-      allowedHeaders: 'Content-Type, Authorization', // Allowed headers
-      credentials: true,  // Allow credentials (cookies, authorization headers, etc.)
-    });
+
+  const allowedOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',')
+    : [];
+
+  app.enableCors({
+    origin: allowedOrigins,
+    methods: 'GET, POST, PUT, DELETE',
+    allowedHeaders: 'Content-Type, Authorization',
+    credentials: true,
+  });
 
   await app.listen(process.env.PORT ?? 3333);
 }
+
 bootstrap();
