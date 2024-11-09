@@ -1,0 +1,21 @@
+# Ignore node modules and other dependencies
+node_modules
+dist
+.git
+.gitignore
+Dockerfile
+docker-compose.yml
+.env
+.env.local
+.npmrc
+
+# Ignore logs and temporary files
+logs
+*.log
+*.tsbuildinfo
+
+# Ignore editor and OS-specific files
+.vscode
+.idea
+.DS_Store
+Thumbs.db

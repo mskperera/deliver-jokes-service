@@ -22,3 +22,5 @@ Get Joke Types
 Endpoint: /jokes/types
 Method: GET
 
+
+run: pm2 start dist/main.js --name "deliver-jokes-service" --watch --env production
