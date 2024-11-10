@@ -9,7 +9,7 @@ generator client {
 
 model Joke {
   id      Int    @id @default(autoincrement())
-  content String
+  content String @db.VarChar(500)
   typeId  Int
   type    JokeType @relation(fields: [typeId], references: [id])
 }
